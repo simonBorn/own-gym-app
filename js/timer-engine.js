@@ -97,6 +97,7 @@ class LadderRunner extends BaseRunner {
     super(day, opts);
     this.exIndex = 0; this.rung = 1; this.direction = 1;
     this.phase = "work"; this.exerciseClock = 7.5 * 60; this.restRemaining = 0;
+    this.workElapsed = 0; // real time spent on the current rung's reps, measured live
   }
   _tick() {
     if (this.paused) return;
@@ -105,7 +106,9 @@ class LadderRunner extends BaseRunner {
     this.exerciseClock -= 0.1;
     if (this.phase === "rest") {
       this.restRemaining -= 0.1;
-      if (this.restRemaining <= 0) { this.phase = "work"; Sound.go(); }
+      if (this.restRemaining <= 0) { this.phase = "work"; this.workElapsed = 0; Sound.go(); }
+    } else {
+      this.workElapsed += 0.1;
     }
     if (this.exerciseClock <= 0) {
       this.exIndex += 1;
@@ -114,17 +117,20 @@ class LadderRunner extends BaseRunner {
     }
     this._emit();
   }
-  _resetForExercise() { this.rung = 1; this.direction = 1; this.phase = "work"; this.exerciseClock = 7.5 * 60; }
+  _resetForExercise() { this.rung = 1; this.direction = 1; this.phase = "work"; this.exerciseClock = 7.5 * 60; this.workElapsed = 0; }
   repsDone() {
     const ex = this.day.exercises[this.exIndex];
     this._ensureLogEntry(ex.display).sets.push({ reps: this.rung });
-    this.restRemaining = Math.min(90, Math.max(8, this.rung * 3));
+    // Book's rule: rest = however long that rung's reps actually took you. We measure it live
+    // rather than estimate it, with just a floor (avoid a near-zero rest on a stray tap) and a
+    // sanity ceiling (don't let one rung eat the whole 7.5-minute exercise budget).
+    this.restRemaining = Math.min(90, Math.max(2, this.workElapsed));
     this.phase = "rest"; Sound.rest();
     if (this.direction === 1) this.rung += 1;
     else { this.rung -= 1; if (this.rung < 1) { this.rung = 1; this.direction = 1; } }
     this._emit();
   }
-  tooHard() { this.direction = -1; this.rung = Math.max(1, this.rung - 1); this._emit(); }
+  tooHard() { this.direction = -1; this.rung = Math.max(1, this.rung - 1); this.workElapsed = 0; this._emit(); }
   skipExercise() {
     this.exIndex += 1;
     if (this.exIndex >= this.day.exercises.length) return this._finish();
