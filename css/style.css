@@ -1,0 +1,107 @@
+:root {
+  --bg: #0f1115;
+  --surface: #1a1d24;
+  --surface2: #22262f;
+  --text: #f0f1f3;
+  --muted: #9aa1ac;
+  --accent: #4fd1c5;
+  --accent-strong: #2fb8ab;
+  --danger: #e2574c;
+  --work: #4fd1c5;
+  --rest: #f2a65a;
+  --radius: 14px;
+  --maxw: 520px;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f5f6f8; --surface: #ffffff; --surface2: #eef0f3;
+    --text: #15181d; --muted: #666d78;
+  }
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-tap-highlight-color: transparent;
+}
+#app { max-width: var(--maxw); margin: 0 auto; min-height: 100vh; padding-bottom: 40px; }
+
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; position: sticky; top: 0; background: var(--bg); z-index: 5;
+  border-bottom: 1px solid var(--surface2);
+}
+.topbar h1 { font-size: 1.05rem; margin: 0; font-weight: 600; }
+.iconbtn {
+  background: none; border: none; color: var(--text); font-size: 1.2rem;
+  width: 36px; height: 36px; border-radius: 10px; cursor: pointer;
+}
+.iconbtn:active { background: var(--surface2); }
+
+.screen { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+
+.card {
+  background: var(--surface); border-radius: var(--radius); padding: 16px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.card h2, .card h3 { margin: 4px 0; }
+.card-select { text-align: left; border: none; cursor: pointer; width: 100%; }
+.card-select:active { background: var(--surface2); }
+
+.small { font-size: 0.82rem; }
+.muted { color: var(--muted); }
+
+.badge {
+  display: inline-block; background: var(--surface2); color: var(--text);
+  padding: 4px 10px; border-radius: 999px; font-size: 0.78rem; margin-right: 6px; width: fit-content;
+}
+.badge-type { background: rgba(79, 209, 197, 0.18); color: var(--accent); }
+
+.row { display: flex; gap: 10px; }
+.row > * { flex: 1; }
+
+.stat { background: var(--surface); border-radius: var(--radius); padding: 16px; flex: 1; text-align: center; }
+.stat-num { font-size: 1.8rem; font-weight: 700; color: var(--accent); }
+
+.btn {
+  display: block; width: auto; padding: 12px 16px; border-radius: 12px;
+  border: 1px solid var(--surface2); background: var(--surface); color: var(--text);
+  font-size: 1rem; cursor: pointer; text-align: center;
+}
+.btn:active { background: var(--surface2); }
+.btn-block { width: 100%; }
+.btn-primary { background: var(--accent); color: #06201d; border-color: var(--accent); font-weight: 700; }
+.btn-primary:active { background: var(--accent-strong); }
+.btn-ghost { background: transparent; border-color: transparent; color: var(--muted); }
+.btn-danger { background: var(--danger); color: white; border-color: var(--danger); }
+.file-btn { position: relative; overflow: hidden; }
+
+.chiprow { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  background: var(--surface2); border: none; color: var(--text); padding: 8px 14px;
+  border-radius: 999px; font-size: 0.85rem; cursor: pointer;
+}
+.chip-active { background: var(--accent); color: #06201d; font-weight: 700; }
+
+.exlist { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; }
+.exlist.small { font-size: 0.88rem; }
+
+.switch-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; }
+.switch-row input { width: 20px; height: 20px; }
+
+.timer-screen { align-items: stretch; text-align: center; padding-top: 24px; }
+.big-timer {
+  font-size: 4rem; font-weight: 800; font-variant-numeric: tabular-nums;
+  margin: 10px 0; letter-spacing: 1px;
+}
+.timer-work { color: var(--work); }
+.timer-rest { color: var(--rest); }
+.rung { font-size: 1.1rem; font-weight: 700; color: var(--accent); margin-top: 4px; }
+
+.progress { background: var(--surface2); height: 8px; border-radius: 99px; overflow: hidden; }
+.progress-fill { background: var(--accent); height: 100%; transition: width 0.1s linear; }
+
+a { color: var(--accent); }
