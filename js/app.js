@@ -12,10 +12,10 @@ let lastTickKey = null;  // gates full re-render vs. a cheap text-only patch on 
 
 function workoutKey(vm) {
   switch (vm.kind) {
-    case "ladder": return `ladder-${vm.exIndex}-${vm.phase}-${vm.rung}-${vm.direction}-${vm.paused}`;
-    case "interval": return `interval-${vm.exIndex}-${vm.setIndex}-${vm.phase}-${vm.paused}`;
-    case "superset": return `superset-${vm.pairIndex}-${vm.round}-${vm.sub}-${vm.phase}-${vm.paused}`;
-    case "tabata": return `tabata-${vm.exIndex}-${vm.round}-${vm.phase}-${vm.paused}`;
+    case "ladder": return `ladder-${vm.exIndex}-${vm.phase}-${vm.rung}-${vm.direction}-${vm.paused}-${vm.onBreak}`;
+    case "interval": return `interval-${vm.exIndex}-${vm.setIndex}-${vm.phase}-${vm.paused}-${vm.onBreak}`;
+    case "superset": return `superset-${vm.pairIndex}-${vm.round}-${vm.sub}-${vm.phase}-${vm.paused}-${vm.onBreak}`;
+    case "tabata": return `tabata-${vm.exIndex}-${vm.round}-${vm.phase}-${vm.paused}-${vm.onBreak}`;
     case "stapper": return `stapper-${vm.rounds}-${vm.paused}`;
     default: return "unknown";
   }
@@ -28,7 +28,8 @@ function seqKey(vm) { return `seq-${vm.index}-${vm.sideLabel}-${vm.paused}`; }
 function patchClock(vm) {
   const liveClock = document.getElementById("liveClock");
   if (liveClock) {
-    if (vm.kind === "stapper") liveClock.textContent = fmtTime(vm.clock);
+    if (vm.onBreak) liveClock.textContent = fmtTime(vm.breakRemaining);
+    else if (vm.kind === "stapper") liveClock.textContent = fmtTime(vm.clock);
     else if (vm.kind === "ladder") liveClock.textContent = fmtTime(vm.restRemaining);
     else if (vm.kind === "interval") liveClock.textContent = fmtTime(vm.setClock);
     else if (vm.kind === "superset") liveClock.textContent = fmtTime(vm.pairClock);
@@ -193,7 +194,8 @@ function renderWorkout() {
   const day = activeDay.dayDef;
   const header = `<div class="small muted">${day.label} &middot; ${day.category} &middot; ${WORKOUT_TYPE_INFO[day.type].name}</div>`;
   let body = "";
-  if (vm.kind === "ladder") body = renderLadder(vm);
+  if (vm.onBreak) body = renderBreak(vm);
+  else if (vm.kind === "ladder") body = renderLadder(vm);
   else if (vm.kind === "interval") body = renderInterval(vm);
   else if (vm.kind === "superset") body = renderSuperset(vm);
   else if (vm.kind === "tabata") body = renderTabata(vm);
@@ -205,12 +207,34 @@ function renderWorkout() {
 
 function exerciseCue(e) { return resolveExercise(e.base).desc; }
 
+function cueDetails(ex) {
+  return `<details class="cue-toggle"><summary>How to</summary><p class="muted">${exerciseCue(ex)}</p></details>`;
+}
+
+function renderBreak(vm) {
+  const nextLabel = vm.nextPair
+    ? `${vm.nextPair[0].display} &rarr; ${vm.nextPair[1].display}`
+    : (vm.nextExercise ? vm.nextExercise.display : "next exercise");
+  return `
+  <div class="small muted">Break</div>
+  <h2>Nice work — take a breather</h2>
+  <div class="big-timer" id="liveClock">${fmtTime(vm.breakRemaining)}</div>
+  <p class="muted">Next up: ${nextLabel}</p>
+  <div class="row">
+    <button class="btn" data-action="workout:pause">${vm.paused ? "Resume" : "Pause"}</button>
+    <button class="btn btn-primary" data-action="break:skip">Skip Break</button>
+  </div>`;
+}
+
 function renderLadder(vm) {
   const ex = vm.exercise;
   return `
-  <div class="small muted">Exercise ${vm.exIndex + 1} / ${vm.total} &middot; time left <span id="liveExClock">${fmtTime(vm.exerciseClock)}</span></div>
+  <div class="ex-header">
+    <span class="small muted">Exercise ${vm.exIndex + 1} / ${vm.total}</span>
+    <span class="ex-clock" id="liveExClock">${fmtTime(vm.exerciseClock)}</span>
+  </div>
   <h2>${ex.display}</h2>
-  <p class="muted">${exerciseCue(ex)}</p>
+  ${cueDetails(ex)}
   ${vm.phase === "work" ? `
     <div class="rung">Rung ${vm.rung} ${vm.direction === 1 ? "&uarr; climbing" : "&darr; descending"}</div>
     <p>Do <strong>${vm.rung}</strong> rep${vm.rung === 1 ? "" : "s"}, then tap Done.</p>
@@ -239,7 +263,7 @@ function renderInterval(vm) {
   return `
   <div class="small muted">Exercise ${vm.exIndex + 1} / ${vm.total} &middot; Set ${vm.setIndex + 1} / 3</div>
   <h2>${ex.display}</h2>
-  <p class="muted">${exerciseCue(ex)}</p>
+  ${cueDetails(ex)}
   <div class="big-timer" id="liveClock">${fmtTime(vm.setClock)}</div>
   ${vm.phase === "work" ? `<p>Work to failure or ~90s, then log your reps:</p>${repButtons(6, 12, "interval:log")}` : `<p class="muted">Resting until the 3-minute clock runs out.</p>`}
   <div class="row">
@@ -255,7 +279,7 @@ function renderSuperset(vm) {
   return `
   <div class="small muted">Pair ${vm.pairIndex + 1} / ${vm.total} &middot; Round ${vm.round + 1} / 2</div>
   <h2>${ex.display}</h2>
-  <p class="muted">${exerciseCue(ex)}</p>
+  ${cueDetails(ex)}
   <div class="big-timer" id="liveClock">${fmtTime(vm.pairClock)}</div>
   ${vm.phase === "work" ? `<p>${hard ? "Harder move — 1-5 reps, controlled." : "Easier move — 6-12 reps, right after."}</p>${repButtons(hard ? 1 : 6, hard ? 5 : 12, "superset:log")}` : `<p class="muted">Resting until the 4-minute clock runs out.</p>`}
   <div class="row">
@@ -269,7 +293,7 @@ function renderTabata(vm) {
   return `
   <div class="small muted">Exercise ${vm.exIndex + 1} / ${vm.total} &middot; Round ${vm.round + 1} / 8</div>
   <h2>${ex.display}</h2>
-  <p class="muted">${exerciseCue(ex)}</p>
+  ${cueDetails(ex)}
   <div class="big-timer ${vm.phase === "work" ? "timer-work" : "timer-rest"}" id="liveClock">${fmtTime(vm.phaseClock)}</div>
   <p>${vm.phase === "work" ? "GO — all out!" : "Rest."}</p>
   <div class="row">
@@ -444,6 +468,7 @@ function handleAction(el) {
     if (arg === "skip") return runner.skipPair();
   }
   if (cmd === "tabata" && arg === "skip") return runner.skipExercise();
+  if (cmd === "break" && arg === "skip") return runner.skipBreak();
   if (cmd === "stapper" && arg === "round") return runner.addRound();
   if (cmd === "backup" && arg === "export") return exportBackup(state);
   if (cmd === "reset" && arg === "all") {

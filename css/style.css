@@ -104,4 +104,17 @@ body {
 .progress { background: var(--surface2); height: 8px; border-radius: 99px; overflow: hidden; }
 .progress-fill { background: var(--accent); height: 100%; transition: width 0.1s linear; }
 
+.ex-header { display: flex; justify-content: space-between; align-items: baseline; padding: 0 2px; }
+.ex-clock { font-size: 1.7rem; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--text); }
+
+.cue-toggle { text-align: left; margin: 2px 0; }
+.cue-toggle summary {
+  cursor: pointer; color: var(--accent); font-size: 0.85rem; font-weight: 600;
+  list-style: none; display: inline-block;
+}
+.cue-toggle summary::-webkit-details-marker { display: none; }
+.cue-toggle summary::before { content: "▸ "; }
+.cue-toggle[open] summary::before { content: "▾ "; }
+.cue-toggle p { margin: 6px 0 0; }
+
 a { color: var(--accent); }

@@ -98,9 +98,16 @@ class LadderRunner extends BaseRunner {
     this.exIndex = 0; this.rung = 1; this.direction = 1;
     this.phase = "work"; this.exerciseClock = 7.5 * 60; this.restRemaining = 0;
     this.workElapsed = 0; // real time spent on the current rung's reps, measured live
+    this.onBreak = false; this.breakRemaining = 0;
   }
   _tick() {
     if (this.paused) return;
+    if (this.onBreak) {
+      this.breakRemaining -= 0.1;
+      if (this.breakRemaining <= 0) this._endBreak();
+      this._emit();
+      return;
+    }
     const exList = this.day.exercises;
     if (this.exIndex >= exList.length) return this._finish();
     this.exerciseClock -= 0.1;
@@ -111,12 +118,13 @@ class LadderRunner extends BaseRunner {
       this.workElapsed += 0.1;
     }
     if (this.exerciseClock <= 0) {
-      this.exIndex += 1;
-      if (this.exIndex >= exList.length) return this._finish();
-      this._resetForExercise();
+      if (this.exIndex + 1 >= exList.length) return this._finish();
+      this.onBreak = true; this.breakRemaining = 60;
     }
     this._emit();
   }
+  _endBreak() { this.onBreak = false; this.exIndex += 1; this._resetForExercise(); Sound.go(); }
+  skipBreak() { this._endBreak(); this._emit(); }
   _resetForExercise() { this.rung = 1; this.direction = 1; this.phase = "work"; this.exerciseClock = 7.5 * 60; this.workElapsed = 0; }
   repsDone() {
     const ex = this.day.exercises[this.exIndex];
@@ -126,11 +134,17 @@ class LadderRunner extends BaseRunner {
     // sanity ceiling (don't let one rung eat the whole 7.5-minute exercise budget).
     this.restRemaining = Math.min(90, Math.max(2, this.workElapsed));
     this.phase = "rest"; Sound.rest();
-    if (this.direction === 1) this.rung += 1;
-    else { this.rung -= 1; if (this.rung < 1) { this.rung = 1; this.direction = 1; } }
+    if (this.direction === 1) {
+      this.rung += 1;
+    } else {
+      this.rung -= 1;
+      if (this.rung < 1) { this.rung = 2; this.direction = 1; } // don't repeat 1 twice in a row either
+    }
     this._emit();
   }
-  tooHard() { this.direction = -1; this.rung = Math.max(1, this.rung - 1); this.workElapsed = 0; this._emit(); }
+  // Declaring you've peaked doesn't touch workElapsed or any clock — only repsDone() (tapping
+  // "done with this rung") is allowed to affect timing, per the user's explicit instruction.
+  tooHard() { this.direction = -1; this.rung = Math.max(1, this.rung - 1); this._emit(); }
   skipExercise() {
     this.exIndex += 1;
     if (this.exIndex >= this.day.exercises.length) return this._finish();
@@ -140,8 +154,10 @@ class LadderRunner extends BaseRunner {
     const ex = this.day.exercises[this.exIndex];
     this.onUpdate({
       kind: "ladder", exIndex: this.exIndex, total: this.day.exercises.length, exercise: ex,
+      nextExercise: this.day.exercises[this.exIndex + 1],
       rung: this.rung, direction: this.direction, phase: this.phase,
       restRemaining: this.restRemaining, exerciseClock: this.exerciseClock, paused: this.paused,
+      onBreak: this.onBreak, breakRemaining: this.breakRemaining,
     });
   }
 }
@@ -151,9 +167,16 @@ class IntervalRunner extends BaseRunner {
   constructor(day, opts) {
     super(day, opts);
     this.exIndex = 0; this.setIndex = 0; this.setClock = 180; this.phase = "work";
+    this.onBreak = false; this.breakRemaining = 0;
   }
   _tick() {
     if (this.paused) return;
+    if (this.onBreak) {
+      this.breakRemaining -= 0.1;
+      if (this.breakRemaining <= 0) this._endBreak();
+      this._emit();
+      return;
+    }
     if (this.exIndex >= this.day.exercises.length) return this._finish();
     this.setClock -= 0.1;
     if (this.setClock <= 0) this._nextSet();
@@ -168,11 +191,15 @@ class IntervalRunner extends BaseRunner {
   _nextSet() {
     this.setIndex += 1;
     if (this.setIndex >= 3) {
-      this.setIndex = 0; this.exIndex += 1;
-      if (this.exIndex >= this.day.exercises.length) return this._finish();
+      this.setIndex = 0;
+      if (this.exIndex + 1 >= this.day.exercises.length) { this._finish(); return; }
+      this.onBreak = true; this.breakRemaining = 60;
+      return;
     }
     this.setClock = 180; this.phase = "work"; Sound.go();
   }
+  _endBreak() { this.onBreak = false; this.exIndex += 1; this.setIndex = 0; this.setClock = 180; this.phase = "work"; Sound.go(); }
+  skipBreak() { this._endBreak(); this._emit(); }
   skipSet() { this.setClock = 0; this._tick(); }
   skipExercise() {
     this.exIndex += 1; this.setIndex = 0; this.setClock = 180; this.phase = "work";
@@ -183,7 +210,9 @@ class IntervalRunner extends BaseRunner {
     const ex = this.day.exercises[this.exIndex];
     this.onUpdate({
       kind: "interval", exIndex: this.exIndex, total: this.day.exercises.length, exercise: ex,
+      nextExercise: this.day.exercises[this.exIndex + 1],
       setIndex: this.setIndex, setClock: this.setClock, phase: this.phase, paused: this.paused,
+      onBreak: this.onBreak, breakRemaining: this.breakRemaining,
     });
   }
 }
@@ -194,9 +223,16 @@ class SupersetRunner extends BaseRunner {
     super(day, opts);
     this.pairIndex = 0; this.round = 0; this.sub = 0;
     this.pairClock = 240; this.phase = "work";
+    this.onBreak = false; this.breakRemaining = 0;
   }
   _tick() {
     if (this.paused) return;
+    if (this.onBreak) {
+      this.breakRemaining -= 0.1;
+      if (this.breakRemaining <= 0) this._endBreak();
+      this._emit();
+      return;
+    }
     if (this.pairIndex >= this.day.pairs.length) return this._finish();
     this.pairClock -= 0.1;
     if (this.pairClock <= 0) this._nextRound();
@@ -213,11 +249,15 @@ class SupersetRunner extends BaseRunner {
   _nextRound() {
     this.round += 1; this.sub = 0;
     if (this.round >= 2) {
-      this.round = 0; this.pairIndex += 1;
-      if (this.pairIndex >= this.day.pairs.length) return this._finish();
+      this.round = 0;
+      if (this.pairIndex + 1 >= this.day.pairs.length) { this._finish(); return; }
+      this.onBreak = true; this.breakRemaining = 60;
+      return;
     }
     this.pairClock = 240; this.phase = "work"; Sound.go();
   }
+  _endBreak() { this.onBreak = false; this.pairIndex += 1; this.round = 0; this.sub = 0; this.pairClock = 240; this.phase = "work"; Sound.go(); }
+  skipBreak() { this._endBreak(); this._emit(); }
   skipPair() {
     this.pairIndex += 1; this.round = 0; this.sub = 0; this.pairClock = 240; this.phase = "work";
     if (this.pairIndex >= this.day.pairs.length) return this._finish();
@@ -227,7 +267,9 @@ class SupersetRunner extends BaseRunner {
     const pair = this.day.pairs[this.pairIndex];
     this.onUpdate({
       kind: "superset", pairIndex: this.pairIndex, total: this.day.pairs.length, pair,
+      nextPair: this.day.pairs[this.pairIndex + 1],
       round: this.round, sub: this.sub, pairClock: this.pairClock, phase: this.phase, paused: this.paused,
+      onBreak: this.onBreak, breakRemaining: this.breakRemaining,
     });
   }
 }
@@ -237,9 +279,16 @@ class TabataRunner extends BaseRunner {
   constructor(day, opts) {
     super(day, opts);
     this.exIndex = 0; this.round = 0; this.phase = "work"; this.phaseClock = 20;
+    this.onBreak = false; this.breakRemaining = 0;
   }
   _tick() {
     if (this.paused) return;
+    if (this.onBreak) {
+      this.breakRemaining -= 0.1;
+      if (this.breakRemaining <= 0) this._endBreak();
+      this._emit();
+      return;
+    }
     if (this.exIndex >= this.day.exercises.length) return this._finish();
     this.phaseClock -= 0.1;
     if (this.phaseClock <= 2.9 && this.phaseClock > 2.6) Sound.countdown();
@@ -254,12 +303,16 @@ class TabataRunner extends BaseRunner {
     } else {
       this.round += 1;
       if (this.round >= 8) {
-        this.round = 0; this.exIndex += 1;
-        if (this.exIndex >= this.day.exercises.length) return this._finish();
+        this.round = 0;
+        if (this.exIndex + 1 >= this.day.exercises.length) { this._finish(); return; }
+        this.onBreak = true; this.breakRemaining = 60;
+        return;
       }
       this.phase = "work"; this.phaseClock = 20; Sound.go();
     }
   }
+  _endBreak() { this.onBreak = false; this.exIndex += 1; this.round = 0; this.phase = "work"; this.phaseClock = 20; Sound.go(); }
+  skipBreak() { this._endBreak(); this._emit(); }
   skipExercise() {
     this.exIndex += 1; this.round = 0; this.phase = "work"; this.phaseClock = 20;
     if (this.exIndex >= this.day.exercises.length) return this._finish();
@@ -269,7 +322,9 @@ class TabataRunner extends BaseRunner {
     const ex = this.day.exercises[this.exIndex];
     this.onUpdate({
       kind: "tabata", exIndex: this.exIndex, total: this.day.exercises.length, exercise: ex,
+      nextExercise: this.day.exercises[this.exIndex + 1],
       round: this.round, phase: this.phase, phaseClock: this.phaseClock, paused: this.paused,
+      onBreak: this.onBreak, breakRemaining: this.breakRemaining,
     });
   }
 }
