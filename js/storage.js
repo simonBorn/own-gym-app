@@ -18,7 +18,7 @@ function defaultState() {
     level: null,              // 'basic' | 'first' | 'master' | 'chief'
     currentWeek: 1,           // 1-10
     currentDayIndex: 0,       // index into that week's days array
-    settings: { sound: true, voice: false, keepAwake: true },
+    settings: { sound: true, voice: false, keepAwake: true, theme: "system" }, // theme: 'system' | 'light' | 'dark'
     history: [],              // completed workout records
   };
 }

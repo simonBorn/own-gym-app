@@ -1,4 +1,5 @@
-:root {
+/* Default (and explicitly forced-dark) palette. */
+:root, html[data-theme="dark"] {
   --bg: #0f1115;
   --surface: #1a1d24;
   --surface2: #22262f;
@@ -12,11 +13,18 @@
   --radius: 14px;
   --maxw: 520px;
 }
+/* "Match Phone" (default): follow the OS/browser's own light/dark setting. */
 @media (prefers-color-scheme: light) {
   :root {
     --bg: #f5f6f8; --surface: #ffffff; --surface2: #eef0f3;
     --text: #15181d; --muted: #666d78;
   }
+}
+/* Explicitly forced light, regardless of what the OS reports. Keep these 5 values in sync
+   with the media-query block above if the light palette is ever retuned. */
+html[data-theme="light"] {
+  --bg: #f5f6f8; --surface: #ffffff; --surface2: #eef0f3;
+  --text: #15181d; --muted: #666d78;
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; }

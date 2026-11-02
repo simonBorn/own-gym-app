@@ -3,6 +3,24 @@
 
 let state = loadState();
 setSoundEnabled(state.settings.sound);
+
+// ---------------- Theme ----------------
+const systemSchemeQuery = window.matchMedia("(prefers-color-scheme: light)");
+function applyTheme() {
+  const theme = state.settings.theme || "system";
+  if (theme === "system") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", theme);
+  // Keep the native status/address-bar tint matching whichever palette is actually showing.
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) {
+    const effectiveLight = theme === "light" || (theme === "system" && systemSchemeQuery.matches);
+    meta.setAttribute("content", effectiveLight ? "#f5f6f8" : "#0f1115");
+  }
+}
+systemSchemeQuery.addEventListener("change", () => {
+  if ((state.settings.theme || "system") === "system") applyTheme();
+});
+applyTheme();
 let route = { name: "home" };
 let runner = null;       // active WorkoutRunner (main set) or SequenceRunner (warmup/cooldown)
 let activeDay = null;    // { level, week, dayIndex, dayDef }
@@ -339,8 +357,17 @@ function renderHistory() {
 }
 
 function renderSettings() {
+  const theme = state.settings.theme || "system";
   return `${topNav("Settings", "go:home")}
   <div class="screen">
+    <div class="card">
+      <h3>Appearance</h3>
+      <div class="chiprow">
+        <button class="chip ${theme === "system" ? "chip-active" : ""}" data-action="theme:system">Match Phone</button>
+        <button class="chip ${theme === "light" ? "chip-active" : ""}" data-action="theme:light">Light</button>
+        <button class="chip ${theme === "dark" ? "chip-active" : ""}" data-action="theme:dark">Dark</button>
+      </div>
+    </div>
     <div class="card">
       <label class="switch-row"><span>Sound cues</span><input type="checkbox" data-action="toggle:sound" ${state.settings.sound ? "checked" : ""}></label>
       <label class="switch-row"><span>Spoken cues (voice)</span><input type="checkbox" data-action="toggle:voice" ${state.settings.voice ? "checked" : ""}></label>
@@ -492,6 +519,10 @@ function handleAction(el) {
   if (cmd === "tabata" && arg === "skip") return runner.skipExercise();
   if (cmd === "break" && arg === "skip") return runner.skipBreak();
   if (cmd === "stapper" && arg === "round") return runner.addRound();
+  if (cmd === "theme") {
+    state.settings.theme = arg; saveState(state); applyTheme();
+    return render();
+  }
   if (cmd === "history" && arg === "undo") return undoLastWorkout();
   if (cmd === "backup" && arg === "export") return exportBackup(state);
   if (cmd === "reset" && arg === "all") {
