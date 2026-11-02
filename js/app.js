@@ -331,7 +331,11 @@ function renderSummary() {
 
 function renderHistory() {
   const rows = state.history.map(h => `<li><strong>${new Date(h.date).toLocaleDateString()}</strong> — ${PROGRAM[h.level].label}, Week ${h.week} ${h.dayLabel} (${h.category})</li>`).join("");
-  return `${topNav("History", "go:home")}<div class="screen"><ul class="exlist">${rows || "<li class='muted'>No workouts logged yet.</li>"}</ul></div>`;
+  const undoBtn = state.history.length
+    ? `<button class="btn btn-block btn-danger" data-action="history:undo">Undo Last Workout</button>
+       <p class="muted small">Use this if you skipped through a workout just to test the app — it removes the entry above and puts your week/day progress back where it was.</p>`
+    : "";
+  return `${topNav("History", "go:home")}<div class="screen">${undoBtn}<ul class="exlist">${rows || "<li class='muted'>No workouts logged yet.</li>"}</ul></div>`;
 }
 
 function renderSettings() {
@@ -402,17 +406,35 @@ function finishWorkoutFlow() {
   if (runner) runner.stop();
   releaseWakeLock();
   const { level, week, dayIndex, dayDef } = activeDay;
+  // Remember whether this finish is what moved the week/day pointer forward, so an undo
+  // later can put the pointer back exactly where it was — not just drop the history row.
+  const advancedPointer = level === state.level && week === state.currentWeek && dayIndex === state.currentDayIndex;
   const record = {
     date: new Date().toISOString(), level, week, dayIndex,
     dayLabel: dayDef.label, category: dayDef.category, type: dayDef.type,
-    log: lastLog,
+    log: lastLog, advancedPointer,
   };
   recordWorkout(state, record);
-  if (level === state.level && week === state.currentWeek && dayIndex === state.currentDayIndex) {
+  if (advancedPointer) {
     advanceDay(state, PROGRAM[level].weeks[week - 1].length);
   }
   runner = null;
   go("summary");
+}
+
+// Undoes the most recently logged workout: drops it from history AND, if it was the
+// workout that last moved the week/day pointer forward, puts that pointer back too —
+// so a "test run" you skipped through doesn't leave your actual progress advanced.
+function undoLastWorkout() {
+  if (!state.history.length) return;
+  if (!confirm("Remove the most recent workout from your history? This cannot be undone.")) return;
+  const record = state.history.shift();
+  if (record.advancedPointer && state.level === record.level) {
+    state.currentWeek = record.week;
+    state.currentDayIndex = record.dayIndex;
+  }
+  saveState(state);
+  render();
 }
 
 function handleAction(el) {
@@ -470,6 +492,7 @@ function handleAction(el) {
   if (cmd === "tabata" && arg === "skip") return runner.skipExercise();
   if (cmd === "break" && arg === "skip") return runner.skipBreak();
   if (cmd === "stapper" && arg === "round") return runner.addRound();
+  if (cmd === "history" && arg === "undo") return undoLastWorkout();
   if (cmd === "backup" && arg === "export") return exportBackup(state);
   if (cmd === "reset" && arg === "all") {
     if (confirm("This erases all saved progress on this device. Continue?")) {
