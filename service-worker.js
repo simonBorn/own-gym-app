@@ -1,6 +1,6 @@
 // Offline cache for the Own Gym app. Precaches the whole app shell on install so it keeps
 // working with no connection; bump CACHE_NAME whenever app files change to roll the cache.
-const CACHE_NAME = "own-gym-v3";
+const CACHE_NAME = "own-gym-v4";
 const ASSETS = [
   "./",
   "./index.html",

@@ -142,9 +142,16 @@ class LadderRunner extends BaseRunner {
     }
     this._emit();
   }
-  // Declaring you've peaked doesn't touch workElapsed or any clock — only repsDone() (tapping
-  // "done with this rung") is allowed to affect timing, per the user's explicit instruction.
-  tooHard() { this.direction = -1; this.rung = Math.max(1, this.rung - 1); this._emit(); }
+  // Hitting your limit ends this rung's work just like completing it does — same real-time
+  // rest — but the lower rung only becomes "current" once that rest is over. It still never
+  // resets workElapsed or the exercise clock; it only starts a rest, the same way repsDone() does.
+  tooHard() {
+    this.restRemaining = Math.min(90, Math.max(2, this.workElapsed));
+    this.phase = "rest"; Sound.rest();
+    this.direction = -1;
+    this.rung = Math.max(1, this.rung - 1);
+    this._emit();
+  }
   skipExercise() {
     this.exIndex += 1;
     if (this.exIndex >= this.day.exercises.length) return this._finish();
