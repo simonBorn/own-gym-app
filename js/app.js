@@ -5,16 +5,18 @@ let state = loadState();
 setSoundEnabled(state.settings.sound);
 
 // ---------------- Theme ----------------
+// Background of each selectable theme, for tinting the native status/address bar to match.
+// "system" isn't listed here — it resolves to "light" or "dark" based on the OS setting.
+const THEME_BG = { light: "#f5f6f8", dark: "#0f1115", sunset: "#2d1e2f" };
 const systemSchemeQuery = window.matchMedia("(prefers-color-scheme: light)");
 function applyTheme() {
   const theme = state.settings.theme || "system";
   if (theme === "system") document.documentElement.removeAttribute("data-theme");
   else document.documentElement.setAttribute("data-theme", theme);
-  // Keep the native status/address-bar tint matching whichever palette is actually showing.
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) {
-    const effectiveLight = theme === "light" || (theme === "system" && systemSchemeQuery.matches);
-    meta.setAttribute("content", effectiveLight ? "#f5f6f8" : "#0f1115");
+    const effectiveTheme = theme === "system" ? (systemSchemeQuery.matches ? "light" : "dark") : theme;
+    meta.setAttribute("content", THEME_BG[effectiveTheme] || THEME_BG.dark);
   }
 }
 systemSchemeQuery.addEventListener("change", () => {
@@ -366,6 +368,7 @@ function renderSettings() {
         <button class="chip ${theme === "system" ? "chip-active" : ""}" data-action="theme:system">Match Phone</button>
         <button class="chip ${theme === "light" ? "chip-active" : ""}" data-action="theme:light">Light</button>
         <button class="chip ${theme === "dark" ? "chip-active" : ""}" data-action="theme:dark">Dark</button>
+        <button class="chip ${theme === "sunset" ? "chip-active" : ""}" data-action="theme:sunset">Sunset</button>
       </div>
     </div>
     <div class="card">
